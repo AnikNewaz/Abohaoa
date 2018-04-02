@@ -2,6 +2,7 @@ package com.appmaester.abohaoa.Activities;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -11,11 +12,13 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.appmaester.abohaoa.Models.AbohaoaDataModel;
 import com.appmaester.abohaoa.R;
 import com.appmaester.abohaoa.Utilities.Constants;
 import com.loopj.android.http.AsyncHttpClient;
@@ -50,8 +53,14 @@ public class AbohaoaController extends AppCompatActivity {
         mTemperatureLabel = (TextView) findViewById(R.id.tempTV);
         ImageButton changeCityButton = (ImageButton) findViewById(R.id.changeCityButton);
 
-
-        // TODO: Add an OnClickListener to the changeCityButton here:
+        // Sends to Change City Activity
+        changeCityButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent myIntent = new Intent(AbohaoaController.this, ChangeCityController.class);
+                startActivity(myIntent);
+            }
+        });
 
     }
 
@@ -61,12 +70,26 @@ public class AbohaoaController extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.d("Abohaoa", "onResume() called.");
-        Log.d("Abohaoa", "Getting Weather for Current Location!");
-        getWeatherForCurrentLocation();
+        Intent myIntent = getIntent();
+        String city = myIntent.getStringExtra("City");
+
+        if(city != null){
+            getWeatherForNewCity(city);
+        } else {
+            Log.d("Abohaoa", "Getting Weather for Current Location!");
+            getWeatherForCurrentLocation();
+        }
     }
 
 
-    // TODO: Add getWeatherForNewCity(String city) here:
+    // Get Weather Data for Given City Name
+    private void getWeatherForNewCity(String city){
+        RequestParams params = new RequestParams();
+        params.put("q", city);
+        params.put("appid", Constants.APP_ID);
+        letsDoSomeNetworking(params);
+
+    }
 
 
     // Get Weather Data for Current Location
@@ -144,6 +167,9 @@ public class AbohaoaController extends AppCompatActivity {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response){
                 Log.d("Abohaoa", "Success! JSON: "+ response.toString());
+
+                AbohaoaDataModel abohaoaData = AbohaoaDataModel.fromJson(response);
+                updateUI(abohaoaData);
             }
 
             @Override
@@ -158,12 +184,22 @@ public class AbohaoaController extends AppCompatActivity {
 
 
 
-    // TODO: Add updateUI() here:
+    // UI updates with the Data from the model
+    private void updateUI(AbohaoaDataModel abohaoa){
+        mCityLabel.setText(abohaoa.getmCity());
+        mTemperatureLabel.setText(abohaoa.getmTemperature());
+
+        int imgResourceID = getResources().getIdentifier(abohaoa.getmIconName(), "drawable", getPackageName());
+        mWeatherImage.setImageResource(imgResourceID);
+    }
+
+    // onPause()
 
 
+    @Override
+    protected void onPause() {
+        super.onPause();
 
-    // TODO: Add onPause() here:
-
-
-
+        if (locationManager != null) locationManager.removeUpdates(locationListener);
+    }
 }
